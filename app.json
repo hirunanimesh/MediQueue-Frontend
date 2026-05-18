@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "MediQueue",
+    "slug": "mediqueue-frontend",
+    "scheme": "mediqueue",
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-router",
+        {
+          "root": "./src/app"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

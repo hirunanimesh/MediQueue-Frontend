@@ -2,13 +2,14 @@ import { create } from 'axios';
 
 import { API_BASE_URL } from '@/constants/api';
 import { tokenService } from '@/services/tokenService';
-
+// variable to store  a function 
 let unauthorizedHandler: (() => void) | null = null;
 
 export const setUnauthorizedHandler = (handler: (() => void) | null): void => {
   unauthorizedHandler = handler;
 };
 
+// Create an Axios instance with default configuration
 export const axiosInstance = create({
   baseURL: API_BASE_URL,
   headers: {

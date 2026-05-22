@@ -36,6 +36,6 @@ export interface RegisterReceptionistPayload {
 
 // Login — POST /api/v1/auth/login
 export interface LoginPayload {
-  username: string;
+  email: string;
   password: string;
 }

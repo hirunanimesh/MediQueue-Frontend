@@ -1,3 +1,5 @@
+import '../global.css';
+
 import { Stack } from 'expo-router';
 import { Provider as ReduxProvider } from 'react-redux';
 

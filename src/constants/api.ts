@@ -1,4 +1,6 @@
-export const API_BASE_URL = 'https://api.mediqueue.example.com';
+
+
+export const API_BASE_URL = 'http://10.161.8.41:8083';
 
 export const API_ENDPOINTS = {
   AUTH: {

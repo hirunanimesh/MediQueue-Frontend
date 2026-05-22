@@ -3,6 +3,9 @@
     "name": "MediQueue",
     "slug": "mediqueue-frontend",
     "scheme": "mediqueue",
+    "web": {
+      "bundler": "metro"
+    },
     "plugins": [
       "expo-secure-store",
       [

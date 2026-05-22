@@ -12,6 +12,12 @@ export interface AuthResponse {
   token?: string;
 }
 
+export interface LoginResponse {
+  code: number;
+  message: string;
+  data: string;
+}
+
 export const registerPatient = async (
   payload: RegisterPatientPayload,
 ): Promise<AuthResponse> => {
@@ -42,8 +48,8 @@ export const registerReceptionist = async (
   return data;
 };
 
-export const login = async (payload: LoginPayload): Promise<AuthResponse> => {
-  const { data } = await axiosInstance.post<AuthResponse>(
+export const login = async (payload: LoginPayload): Promise<LoginResponse> => {
+  const { data } = await axiosInstance.post<LoginResponse>(
     API_ENDPOINTS.AUTH.LOGIN,
     payload,
   );

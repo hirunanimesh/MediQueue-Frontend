@@ -1,13 +1,16 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
+import { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { registerPatient } from '@/api/auth';
 import { Card } from '@/components/common/Card';
+import { ImageUploadField } from '@/components/common/ImageUploadField';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { Input } from '@/components/common/Input';
 import { Role } from '@/constants/roles';
+import { parseApiError } from '@/utils/errorHandler';
 import { patientRegistrationSchema } from '@/utils/validators';
 
 type PatientRegistrationForm = {
@@ -18,12 +21,16 @@ type PatientRegistrationForm = {
   lastName: string;
   phoneNumber: string;
   address: string;
+  profilePictureUrl: string;
 };
 
 const RegisterPatientScreen = () => {
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isProfilePictureUploading, setIsProfilePictureUploading] = useState(false);
   const {
     control,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<PatientRegistrationForm>({
     resolver: zodResolver(patientRegistrationSchema),
@@ -35,26 +42,36 @@ const RegisterPatientScreen = () => {
       lastName: '',
       phoneNumber: '',
       address: '',
+      profilePictureUrl: '',
     },
   });
 
   const onSubmit = async (values: PatientRegistrationForm) => {
-    await registerPatient({
-      register: {
-        username: values.username,
-        email: values.email,
-        password: values.password,
-        role: Role.PATIENT,
-      },
-      first_Name: values.firstName,
-      last_name: values.lastName,
-      phone_number: values.phoneNumber,
-      address: values.address,
-    });
+    try {
+      setSubmitError(null);
 
-    Alert.alert('Success', 'Patient account created successfully.', [
-      { text: 'OK', onPress: () => router.replace('/(auth)/login') },
-    ]);
+      await registerPatient({
+        register: {
+          username: values.username,
+          email: values.email,
+          password: values.password,
+          role: Role.PATIENT,
+        },
+        first_Name: values.firstName,
+        last_name: values.lastName,
+        phone_number: values.phoneNumber,
+        address: values.address,
+        profile_picture_url: values.profilePictureUrl,
+      });
+
+      Alert.alert('Success', 'Patient account created successfully.', [
+        { text: 'OK', onPress: () => router.replace('/(auth)/login') },
+      ]);
+    } catch (error) {
+      const message = parseApiError(error);
+      setSubmitError(message);
+      Alert.alert('Registration failed', message);
+    }
   };
 
   return (
@@ -73,15 +90,35 @@ const RegisterPatientScreen = () => {
           <Controller control={control} name="lastName" render={({ field }) => <Input label="Last Name" value={field.value} onChangeText={field.onChange} error={errors.lastName?.message} />} />
           <Controller control={control} name="phoneNumber" render={({ field }) => <Input label="Phone Number" value={field.value} onChangeText={field.onChange} error={errors.phoneNumber?.message} />} />
           <Controller control={control} name="address" render={({ field }) => <Input label="Address" value={field.value} onChangeText={field.onChange} error={errors.address?.message} />} />
+          <Controller
+            control={control}
+            name="profilePictureUrl"
+            render={({ field }) => (
+              <ImageUploadField
+                label="Profile Picture"
+                value={field.value}
+                error={errors.profilePictureUrl?.message}
+                helperText="Upload a clear photo for your patient profile."
+                isUploading={isProfilePictureUploading}
+                onUploadingChange={setIsProfilePictureUploading}
+                onChange={(uploadedUrl) => {
+                  field.onChange(uploadedUrl);
+                  setValue('profilePictureUrl', uploadedUrl, { shouldValidate: true, shouldDirty: true });
+                }}
+                onBlur={field.onBlur}
+              />
+            )}
+          />
+          {!!submitError && <Text className="text-sm text-red-600">{submitError}</Text>}
           <ErrorMessage message={errors.root?.message} />
           <View className="mt-2 gap-3">
             <Pressable
               onPress={handleSubmit(onSubmit)}
-              disabled={isSubmitting}
-              className={`w-full items-center rounded-2xl bg-blue-600 px-4 py-4 ${isSubmitting ? 'opacity-60' : ''}`}
+              disabled={isSubmitting || isProfilePictureUploading}
+              className={`w-full items-center rounded-2xl bg-blue-600 px-4 py-4 ${(isSubmitting || isProfilePictureUploading) ? 'opacity-60' : ''}`}
             >
               <Text className="text-base font-semibold text-white">
-                {isSubmitting ? 'Submitting...' : 'Complete Registration'}
+                {isSubmitting ? 'Submitting...' : isProfilePictureUploading ? 'Uploading Picture...' : 'Complete Registration'}
               </Text>
             </Pressable>
 

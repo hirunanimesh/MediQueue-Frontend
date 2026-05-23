@@ -13,6 +13,7 @@ export interface RegisterPatientPayload {
   last_name: string;
   phone_number: string;
   address: string;
+  profile_picture_url: string;
 }
 
 // Doctor Registration — POST /api/v1/auth/register/doctor

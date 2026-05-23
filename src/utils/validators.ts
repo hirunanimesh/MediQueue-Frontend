@@ -12,6 +12,7 @@ export const patientRegistrationSchema = z.object({
   lastName: required,
   phoneNumber: required,
   address: required,
+  profilePictureUrl: z.string().url('Please upload a valid profile picture'),
 });
 
 export const doctorRegistrationSchema = z.object({

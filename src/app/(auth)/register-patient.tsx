@@ -1,14 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { registerPatient } from '@/api/auth';
-import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { Input } from '@/components/common/Input';
-import { colors } from '@/constants/colors';
 import { Role } from '@/constants/roles';
 import { patientRegistrationSchema } from '@/utils/validators';
 
@@ -60,10 +58,14 @@ const RegisterPatientScreen = () => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView className="flex-1 bg-slate-50" contentContainerClassName="flex-grow justify-center px-5 py-6">
       <Card>
-        <Text style={styles.title}>Patient Registration</Text>
-        <View style={styles.form}>
+        <View className="gap-4">
+          <Text className="text-2xl font-bold text-slate-900">Patient Registration</Text>
+          <Text className="text-sm text-slate-500">Create your patient account to book and track sessions.</Text>
+        </View>
+
+        <View className="mt-6 gap-3">
           <Controller control={control} name="username" render={({ field }) => <Input label="Username" value={field.value} onChangeText={field.onChange} error={errors.username?.message} />} />
           <Controller control={control} name="email" render={({ field }) => <Input label="Email" value={field.value} keyboardType="email-address" onChangeText={field.onChange} error={errors.email?.message} />} />
           <Controller control={control} name="password" render={({ field }) => <Input label="Password" value={field.value} secureTextEntry onChangeText={field.onChange} error={errors.password?.message} />} />
@@ -72,29 +74,28 @@ const RegisterPatientScreen = () => {
           <Controller control={control} name="phoneNumber" render={({ field }) => <Input label="Phone Number" value={field.value} onChangeText={field.onChange} error={errors.phoneNumber?.message} />} />
           <Controller control={control} name="address" render={({ field }) => <Input label="Address" value={field.value} onChangeText={field.onChange} error={errors.address?.message} />} />
           <ErrorMessage message={errors.root?.message} />
-          <Button title={isSubmitting ? 'Submitting...' : 'Register'} onPress={handleSubmit(onSubmit)} disabled={isSubmitting} />
+          <View className="mt-2 gap-3">
+            <Pressable
+              onPress={handleSubmit(onSubmit)}
+              disabled={isSubmitting}
+              className={`w-full items-center rounded-2xl bg-blue-600 px-4 py-4 ${isSubmitting ? 'opacity-60' : ''}`}
+            >
+              <Text className="text-base font-semibold text-white">
+                {isSubmitting ? 'Submitting...' : 'Complete Registration'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => router.replace('/(auth)/login')}
+              className="items-center rounded-2xl border border-slate-200 bg-white px-4 py-4"
+            >
+              <Text className="text-base font-semibold text-slate-700">Back to Login</Text>
+            </Pressable>
+          </View>
         </View>
       </Card>
     </ScrollView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    backgroundColor: colors.background,
-    flexGrow: 1,
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 16,
-    color: colors.textPrimary,
-  },
-  form: {
-    gap: 12,
-  },
-});
 
 export default RegisterPatientScreen;

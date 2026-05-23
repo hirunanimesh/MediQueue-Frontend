@@ -27,6 +27,7 @@ export const doctorRegistrationSchema = z.object({
     .min(1, 'This field is required')
     .regex(/^\d+$/, 'Years of experience must be numeric'),
   phoneNumber: required,
+  profilePictureUrl: z.string().url('Please upload a valid profile picture'),
 });
 
 export const receptionistRegistrationSchema = z.object({

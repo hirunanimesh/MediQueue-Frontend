@@ -12,6 +12,7 @@ A production-ready React Native (Expo) mobile foundation for doctor channeling a
 - Redux Toolkit
 - expo-secure-store
 - react-hook-form
+- expo-image-picker
 
 ## Folder Structure
 
@@ -36,6 +37,29 @@ A production-ready React Native (Expo) mobile foundation for doctor channeling a
 npm install
 npm run start
 ```
+
+## Cloudinary Setup
+
+Create a local `.env` file at the project root and add:
+
+```bash
+EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloud_name
+EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET=your_unsigned_upload_preset
+```
+
+The app reads these values through Expo public env vars, so they are available in the frontend bundle. Keep the `.env` file out of version control; `.env.example` is provided as a template.
+
+To configure the unsigned upload preset in Cloudinary:
+
+1. Open the Cloudinary console and go to Settings > Upload.
+2. Create a new upload preset.
+3. Set the preset to unsigned.
+4. Restrict allowed formats and size limits as needed for your app.
+5. Copy the preset name into `EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET`.
+
+The `EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME` value is your Cloudinary cloud name from the dashboard home page.
+
+The reusable upload flow lives in `src/config/cloudinary.ts`, `src/services/cloudinaryService.ts`, and `src/components/common/ImageUploadField.tsx`, so other screens can upload images with the same direct-to-Cloudinary path.
 
 Optional platform targets:
 

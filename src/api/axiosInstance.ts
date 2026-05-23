@@ -20,6 +20,12 @@ export const axiosInstance = create({
 axiosInstance.interceptors.request.use(async (config) => {
   const token = await tokenService.getToken();
 
+  console.log("➡️ REQUEST:", {
+    url: config.url,
+    method: config.method,
+    data: config.data,
+  });
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -28,12 +34,22 @@ axiosInstance.interceptors.request.use(async (config) => {
 });
 
 axiosInstance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log("⬅️ RESPONSE:", {
+      status: response.status,
+      data: response.data,
+    });
+    return response;
+  },
   async (error) => {
+    console.log("⬅️ ERROR:", {
+      status: error?.response?.status,
+      data: error?.response?.data,
+    });
     if (error?.response?.status === 401) {
       unauthorizedHandler?.();
     }
-
     return Promise.reject(error);
   },
+  
 );

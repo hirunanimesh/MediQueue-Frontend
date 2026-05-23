@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import { login as loginRequest } from '@/api/auth';
 import { Role } from '@/constants/roles';
 import { useAuth } from '@/hooks/useAuth';
+import { roleDashboardRoute } from '@/navigation/RoleRouter';
 
 const decodeBase64Url = (value: string) => {
   const normalizedValue = value.replace(/-/g, '+').replace(/_/g, '/');
@@ -20,6 +22,7 @@ const decodeBase64Url = (value: string) => {
 };
 
 const LoginScreen = () => {
+  const router = useRouter();
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -70,12 +73,23 @@ const LoginScreen = () => {
           role,
         },
       });
+
+      router.replace(roleDashboardRoute(role));
+      
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to log in.';
       setErrorMessage(message);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleRegisterPatient = () => {
+    router.push('/(auth)/register-patient');
+  };
+
+  const handleRegisterDoctor = () => {
+    router.push('/(auth)/register-doctor');
   };
 
   return (
@@ -127,6 +141,24 @@ const LoginScreen = () => {
               <Text className="text-base font-semibold text-white">Login</Text>
             )}
           </Pressable>
+
+          <View className="mt-2 gap-3">
+            <Text className="text-center text-sm text-slate-500">Need an account?</Text>
+
+            <Pressable
+              onPress={handleRegisterPatient}
+              className="items-center rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3"
+            >
+              <Text className="text-base font-semibold text-blue-700">Register as Patient</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={handleRegisterDoctor}
+              className="items-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+            >
+              <Text className="text-base font-semibold text-slate-700">Register as Doctor</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
     </View>

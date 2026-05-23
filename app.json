@@ -9,6 +9,12 @@
     "plugins": [
       "expo-secure-store",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow MediQueue to access your photos so you can upload profile pictures."
+        }
+      ],
+      [
         "expo-router",
         {
           "root": "./src/app"

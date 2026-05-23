@@ -24,6 +24,7 @@ export interface RegisterDoctorPayload {
   hospital: string;
   experience_years: number;
   phone_number: string;
+  profile_picture_url: string;
 }
 
 // Receptionist Registration — POST /api/v1/auth/register/recep (Doctor protected)

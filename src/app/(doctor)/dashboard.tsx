@@ -1,12 +1,16 @@
 import { Pressable, Text, View } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from 'expo-router';
+import { roleDashboardRoute } from '@/navigation/RoleRouter'
 
 const DoctorDashboard = () => {
+  const router = useRouter();
   const { logout } = useAuth();
 
   const handleLogout = async () => {
     try {
       await logout();
+      router.replace(roleDashboardRoute(null));
     } catch {
       // ignore errors on logout
     }

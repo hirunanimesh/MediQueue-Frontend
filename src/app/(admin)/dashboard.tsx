@@ -1,14 +1,33 @@
-import { StyleSheet, Text, View } from 'react-native';
-import DoctorDashboard from '../(doctor)/dashboard';
 
-const AdminDashboard = () => (
-  <View style={styles.container}>
-    <Text>Admin Dashboard</Text>
-  </View>
-);
+import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from 'expo-router';
+import { roleDashboardRoute } from '@/navigation/RoleRouter'
+import { Pressable, Text, View } from 'react-native';
 
-const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-});
+const AdminDashboard = () => {
+      const router = useRouter();
+    const { logout } = useAuth();
+  
+    const handleLogout = async () => {
+      try {
+        await logout();
+        router.replace(roleDashboardRoute(null));
+      } catch {
+        // ignore errors on logout
+      }
+    };
+  
+    return (
+      <View className="flex-1 items-center justify-center bg-white p-4">
+        <Text className="text-xl font-semibold mb-6">Admin Dashboard</Text>
+  
+        <Pressable onPress={handleLogout} className="bg-red-600 px-4 py-2 rounded-md">
+          <Text className="text-white font-semibold">Logout</Text>
+        </Pressable>
+      </View>
+    );
+};
+
+
 
 export default AdminDashboard;

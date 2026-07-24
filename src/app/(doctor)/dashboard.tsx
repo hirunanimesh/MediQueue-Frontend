@@ -8,6 +8,7 @@ import {
   Modal,
   RefreshControl,
   ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -53,6 +54,7 @@ const DoctorDashboard = () => {
   const { role, isHydrating, logout } = useAuth();
 
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState<'owned' | 'assigned'>('owned');
   const [ownedCenters, setOwnedCenters] = useState<DoctorOwnedMedicalCentersResponse[]>([]);
   const [assignedCenters, setAssignedCenters] = useState<DoctorOwnedMedicalCentersResponse[]>([]);
   const [isLoadingList, setIsLoadingList] = useState(false);
@@ -122,7 +124,6 @@ const DoctorDashboard = () => {
       setIsRefreshing(false);
     }
   }, []);
-
 
   useEffect(() => {
     if (!isHydrating && role === Role.DOCTOR) {
@@ -267,59 +268,83 @@ const DoctorDashboard = () => {
           </TouchableOpacity>
         </View>
 
+        {/* Tabs */}
+        <View className="flex-row bg-slate-200/80 rounded-xl p-1">
+          <TouchableOpacity
+            key="tab-owned"
+            activeOpacity={0.7}
+            onPress={() => setActiveTab('owned')}
+            style={activeTab === 'owned' ? styles.activeTab : undefined}
+            className={`flex-1 py-2.5 items-center rounded-lg ${activeTab === 'owned' ? 'bg-white' : ''
+              }`}
+          >
+            <Text
+              className={`text-sm ${activeTab === 'owned' ? 'font-bold text-blue-600' : 'font-medium text-slate-600'
+                }`}
+            >
+              Owned ({ownedCenters.length})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            key="tab-assigned"
+            activeOpacity={0.7}
+            onPress={() => setActiveTab('assigned')}
+            style={activeTab === 'assigned' ? styles.activeTab : undefined}
+            className={`flex-1 py-2.5 items-center rounded-lg ${activeTab === 'assigned' ? 'bg-white' : ''
+              }`}
+          >
+            <Text
+              className={`text-sm ${activeTab === 'assigned' ? 'font-bold text-blue-600' : 'font-medium text-slate-600'
+                }`}
+            >
+              Assigned ({assignedCenters.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Content Section */}
         {isLoadingList ? (
           <View key="loading-state" className="py-10 items-center">
             <ActivityIndicator size="large" color="#2563eb" />
           </View>
+        ) : activeTab === 'owned' ? (
+          <View key="owned-section" className="gap-3">
+            {ownedCenters.length === 0 ? (
+              <View
+                key="empty-owned"
+                className="bg-white rounded-2xl p-6 border border-slate-200 items-center"
+              >
+                <Text className="text-base font-semibold text-slate-700">
+                  No owned medical centers found.
+                </Text>
+                <Text className="text-xs text-slate-400 mt-1 text-center">
+                  Tap "+ Create Medical Center" above to add your first clinic or hospital.
+                </Text>
+              </View>
+            ) : (
+              <View key="owned-list" className="gap-3">
+                {ownedCenters.map((center, index) => renderCenterCard(center, index, 'owned'))}
+              </View>
+            )}
+          </View>
         ) : (
-          <View className="gap-6">
-            {/* Owned Medical Centers Section */}
-            <View className="gap-3">
-              <View className="flex-row items-center justify-between px-1">
-                <Text className="text-lg font-bold text-slate-900">
-                  Owned Medical Centers ({ownedCenters.length})
+          <View key="assigned-section" className="gap-3">
+            {assignedCenters.length === 0 ? (
+              <View
+                key="empty-assigned"
+                className="bg-white rounded-2xl p-6 border border-slate-200 items-center"
+              >
+                <Text className="text-base font-semibold text-slate-700">
+                  No assigned medical centers found.
                 </Text>
               </View>
-
-              {ownedCenters.length === 0 ? (
-                <View className="bg-white rounded-2xl p-5 border border-slate-200 items-center">
-                  <Text className="text-base font-semibold text-slate-700">
-                    No owned medical centers found.
-                  </Text>
-                  <Text className="text-xs text-slate-400 mt-1 text-center">
-                    Tap "+ Create Medical Center" above to add your first clinic or hospital.
-                  </Text>
-                </View>
-              ) : (
-                <View className="gap-3">
-                  {ownedCenters.map((center, index) => renderCenterCard(center, index, 'owned'))}
-                </View>
-              )}
-            </View>
-
-            {/* Assigned Medical Centers Section */}
-            <View className="gap-3">
-              <View className="flex-row items-center justify-between px-1">
-                <Text className="text-lg font-bold text-slate-900">
-                  Assigned Medical Centers ({assignedCenters.length})
-                </Text>
+            ) : (
+              <View key="assigned-list" className="gap-3">
+                {assignedCenters.map((center, index) =>
+                  renderCenterCard(center, index, 'assigned'),
+                )}
               </View>
-
-              {assignedCenters.length === 0 ? (
-                <View className="bg-white rounded-2xl p-5 border border-slate-200 items-center">
-                  <Text className="text-base font-semibold text-slate-700">
-                    No assigned medical centers found.
-                  </Text>
-                </View>
-              ) : (
-                <View className="gap-3">
-                  {assignedCenters.map((center, index) =>
-                    renderCenterCard(center, index, 'assigned'),
-                  )}
-                </View>
-              )}
-            </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -470,5 +495,15 @@ const DoctorDashboard = () => {
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  activeTab: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+});
 
 export default DoctorDashboard;

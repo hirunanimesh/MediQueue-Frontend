@@ -1,28 +1,472 @@
-import { Pressable, Text, View } from 'react-native';
-import { useAuth } from '@/hooks/useAuth';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
-import { roleDashboardRoute } from '@/navigation/RoleRouter'
+import React, { useCallback, useEffect, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+
+import {
+  createMedicalCenter,
+  getAssignedMedicalCenters,
+  getOwnedMedicalCenters,
+} from '@/api/medicalCenter';
+import { Input } from '@/components/common/Input';
+import { Role } from '@/constants/roles';
+import { useAuth } from '@/hooks/useAuth';
+import { roleDashboardRoute } from '@/navigation/RoleRouter';
+import type {
+  DoctorOwnedMedicalCentersResponse,
+  StandardResponse,
+} from '@/types/medicalCenter.types';
+import { medicalCenterSchema } from '@/utils/validators';
+
+interface MedicalCenterFormData {
+  name: string;
+  address: string;
+  latitude: string;
+  longitude: string;
+  opensAt: string;
+  closesAt: string;
+}
+
+const formatTimeToHHMMSS = (timeStr: string): string => {
+  const parts = timeStr.trim().split(':');
+  if (parts.length === 2) {
+    return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}:00`;
+  }
+  if (parts.length === 3) {
+    return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}:${parts[2].padStart(2, '0')}`;
+  }
+  return timeStr;
+};
 
 const DoctorDashboard = () => {
   const router = useRouter();
-  const { logout } = useAuth();
+  const { role, isHydrating, logout } = useAuth();
+
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [ownedCenters, setOwnedCenters] = useState<DoctorOwnedMedicalCentersResponse[]>([]);
+  const [assignedCenters, setAssignedCenters] = useState<DoctorOwnedMedicalCentersResponse[]>([]);
+  const [isLoadingList, setIsLoadingList] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<MedicalCenterFormData>({
+    resolver: zodResolver(medicalCenterSchema),
+    defaultValues: {
+      name: '',
+      address: '',
+      latitude: '',
+      longitude: '',
+      opensAt: '08:00:00',
+      closesAt: '17:00:00',
+    },
+  });
+
+  useEffect(() => {
+    if (!isHydrating && role !== Role.DOCTOR) {
+      router.replace(roleDashboardRoute(role));
+    }
+  }, [isHydrating, role, router]);
+
+  const fetchMedicalCenters = useCallback(async () => {
+    setIsLoadingList(true);
+    try {
+      const [ownedRes, assignedRes] = await Promise.allSettled([
+        getOwnedMedicalCenters(),
+        getAssignedMedicalCenters(),
+      ]);
+
+      const extractArray = (
+        val:
+          | DoctorOwnedMedicalCentersResponse[]
+          | StandardResponse<DoctorOwnedMedicalCentersResponse[]>
+          | null
+          | undefined,
+      ): DoctorOwnedMedicalCentersResponse[] => {
+        if (!val) return [];
+        if (Array.isArray(val)) return val;
+        if ('data' in val && Array.isArray(val.data)) return val.data;
+        return [];
+      };
+
+      if (ownedRes.status === 'fulfilled' && ownedRes.value != null) {
+        const ownedData = extractArray(ownedRes.value);
+        setOwnedCenters(ownedData);
+      } else if (ownedRes.status === 'rejected') {
+        console.error('Failed to fetch owned medical centers:', ownedRes.reason);
+      }
+
+      if (assignedRes.status === 'fulfilled' && assignedRes.value != null) {
+        const assignedData = extractArray(assignedRes.value);
+        setAssignedCenters(assignedData);
+      } else if (assignedRes.status === 'rejected') {
+        console.error('Failed to fetch assigned medical centers:', assignedRes.reason);
+      }
+    } catch (err) {
+      console.error('Error fetching medical centers:', err);
+    } finally {
+      setIsLoadingList(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+
+  useEffect(() => {
+    if (!isHydrating && role === Role.DOCTOR) {
+      fetchMedicalCenters();
+    }
+  }, [isHydrating, role, fetchMedicalCenters]);
+
+  const onRefresh = () => {
+    setIsRefreshing(true);
+    fetchMedicalCenters();
+  };
 
   const handleLogout = async () => {
     try {
       await logout();
       router.replace(roleDashboardRoute(null));
     } catch {
-      // ignore errors on logout
+      // ignore
     }
   };
 
-  return (
-    <View className="flex-1 items-center justify-center bg-white p-4">
-      <Text className="text-xl font-semibold mb-6">Doctor Dashboard</Text>
+  const onCreateSubmit = async (values: MedicalCenterFormData) => {
+    try {
+      const payload = {
+        name: values.name.trim(),
+        address: values.address.trim(),
+        latitude: parseFloat(values.latitude),
+        longitude: parseFloat(values.longitude),
+        opensAt: formatTimeToHHMMSS(values.opensAt),
+        closesAt: formatTimeToHHMMSS(values.closesAt),
+      };
 
-      <Pressable onPress={handleLogout} className="bg-red-600 px-4 py-2 rounded-md">
-        <Text className="text-white font-semibold">Logout</Text>
-      </Pressable>
+      const response = await createMedicalCenter(payload);
+
+      if (response.code === 200 || response.data) {
+        Alert.alert('Success', 'Medical Center created successfully!');
+        reset();
+        setIsModalVisible(false);
+        fetchMedicalCenters();
+      } else {
+        Alert.alert('Error', response.message || 'Failed to create medical center');
+      }
+    } catch (error: any) {
+      const errorMsg =
+        error?.response?.data?.message ||
+        error?.message ||
+        'An error occurred while creating the medical center.';
+      Alert.alert('Error', errorMsg);
+    }
+  };
+
+  if (isHydrating || role !== Role.DOCTOR) {
+    return (
+      <View className="flex-1 items-center justify-center bg-slate-50">
+        <ActivityIndicator size="large" color="#2563eb" />
+      </View>
+    );
+  }
+
+  const renderCenterCard = (
+    center: DoctorOwnedMedicalCentersResponse,
+    index: number,
+    sectionKey: string,
+  ) => {
+    if (!center || typeof center !== 'object') return null;
+
+    const centerId = center.id != null ? String(center.id) : `center-${index}`;
+    const hasCoords =
+      typeof center.latitude === 'number' && typeof center.longitude === 'number';
+
+    return (
+      <View
+        key={`${sectionKey}-${centerId}`}
+        className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm gap-2"
+      >
+        <View className="flex-row justify-between items-center mb-0.5">
+          <Text className="text-lg font-bold text-slate-900 flex-1 mr-2">
+            {center.name ?? 'Unnamed Medical Center'}
+          </Text>
+          {center.id != null && (
+            <View className="bg-slate-100 px-2.5 py-1 rounded-md">
+              <Text className="text-xs text-slate-600 font-medium">ID: {center.id}</Text>
+            </View>
+          )}
+        </View>
+
+        {Boolean(center.address) && (
+          <Text className="text-sm text-slate-600">📍 {center.address}</Text>
+        )}
+
+        {Boolean(center.opensAt || center.closesAt) && (
+          <Text className="text-xs text-slate-500">
+            ⏰ Operating Hours: {center.opensAt ?? '--'} - {center.closesAt ?? '--'}
+          </Text>
+        )}
+
+        {hasCoords && (
+          <Text className="text-xs text-slate-500">
+            🌐 Coordinates: {center.latitude}, {center.longitude}
+          </Text>
+        )}
+      </View>
+    );
+  };
+
+  return (
+    <View className="flex-1 bg-slate-50">
+      {/* Top Bar Header */}
+      <View className="bg-white px-5 pt-12 pb-4 border-b border-slate-200 flex-row items-center justify-between shadow-sm">
+        <View>
+          <Text className="text-2xl font-bold text-slate-900">Doctor Dashboard</Text>
+          <Text className="text-xs text-slate-500 mt-0.5">Manage your medical centers & staff</Text>
+        </View>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={handleLogout}
+          className="bg-red-50 border border-red-200 px-3 py-2 rounded-lg"
+        >
+          <Text className="text-red-600 font-semibold text-sm">Logout</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={{ padding: 16, gap: 16 }}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
+      >
+        {/* Quick Action Buttons */}
+        <View className="gap-2.5">
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => setIsModalVisible(true)}
+            className="bg-blue-600 py-3.5 px-4 rounded-xl items-center shadow-sm"
+          >
+            <Text className="text-white font-semibold text-base">+ Create Medical Center</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => router.push('/(doctor)/register-receptionist')}
+            className="bg-sky-50 border border-sky-200 py-3 px-4 rounded-xl items-center"
+          >
+            <Text className="text-sky-700 font-semibold text-sm">+ Register Receptionist</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Content Section */}
+        {isLoadingList ? (
+          <View key="loading-state" className="py-10 items-center">
+            <ActivityIndicator size="large" color="#2563eb" />
+          </View>
+        ) : (
+          <View className="gap-6">
+            {/* Owned Medical Centers Section */}
+            <View className="gap-3">
+              <View className="flex-row items-center justify-between px-1">
+                <Text className="text-lg font-bold text-slate-900">
+                  Owned Medical Centers ({ownedCenters.length})
+                </Text>
+              </View>
+
+              {ownedCenters.length === 0 ? (
+                <View className="bg-white rounded-2xl p-5 border border-slate-200 items-center">
+                  <Text className="text-base font-semibold text-slate-700">
+                    No owned medical centers found.
+                  </Text>
+                  <Text className="text-xs text-slate-400 mt-1 text-center">
+                    Tap "+ Create Medical Center" above to add your first clinic or hospital.
+                  </Text>
+                </View>
+              ) : (
+                <View className="gap-3">
+                  {ownedCenters.map((center, index) => renderCenterCard(center, index, 'owned'))}
+                </View>
+              )}
+            </View>
+
+            {/* Assigned Medical Centers Section */}
+            <View className="gap-3">
+              <View className="flex-row items-center justify-between px-1">
+                <Text className="text-lg font-bold text-slate-900">
+                  Assigned Medical Centers ({assignedCenters.length})
+                </Text>
+              </View>
+
+              {assignedCenters.length === 0 ? (
+                <View className="bg-white rounded-2xl p-5 border border-slate-200 items-center">
+                  <Text className="text-base font-semibold text-slate-700">
+                    No assigned medical centers found.
+                  </Text>
+                </View>
+              ) : (
+                <View className="gap-3">
+                  {assignedCenters.map((center, index) =>
+                    renderCenterCard(center, index, 'assigned'),
+                  )}
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Modal for Create Medical Center */}
+      <Modal
+        visible={isModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-center p-4">
+          <View className="bg-white rounded-2xl p-5 max-h-[90%] shadow-xl">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-xl font-bold text-slate-900">Create Medical Center</Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setIsModalVisible(false)}
+                className="p-1 rounded-lg"
+              >
+                <Text className="text-lg font-bold text-slate-400">✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={{ gap: 12 }}>
+              <Controller
+                control={control}
+                name="name"
+                render={({ field }) => (
+                  <Input
+                    label="Medical Center Name"
+                    placeholder="e.g. City Care Hospital"
+                    value={field.value}
+                    onChangeText={field.onChange}
+                    error={errors.name?.message}
+                  />
+                )}
+              />
+
+              <Controller
+                control={control}
+                name="address"
+                render={({ field }) => (
+                  <Input
+                    label="Address"
+                    placeholder="e.g. 123 Main St, Colombo"
+                    value={field.value}
+                    onChangeText={field.onChange}
+                    error={errors.address?.message}
+                  />
+                )}
+              />
+
+              <View className="flex-row gap-2.5">
+                <View className="flex-1">
+                  <Controller
+                    control={control}
+                    name="latitude"
+                    render={({ field }) => (
+                      <Input
+                        label="Latitude"
+                        placeholder="e.g. 6.9271"
+                        keyboardType="numeric"
+                        value={field.value}
+                        onChangeText={field.onChange}
+                        error={errors.latitude?.message}
+                      />
+                    )}
+                  />
+                </View>
+                <View className="flex-1">
+                  <Controller
+                    control={control}
+                    name="longitude"
+                    render={({ field }) => (
+                      <Input
+                        label="Longitude"
+                        placeholder="e.g. 79.8612"
+                        keyboardType="numeric"
+                        value={field.value}
+                        onChangeText={field.onChange}
+                        error={errors.longitude?.message}
+                      />
+                    )}
+                  />
+                </View>
+              </View>
+
+              <View className="flex-row gap-2.5">
+                <View className="flex-1">
+                  <Controller
+                    control={control}
+                    name="opensAt"
+                    render={({ field }) => (
+                      <Input
+                        label="Opens At (HH:mm:ss)"
+                        placeholder="08:00:00"
+                        value={field.value}
+                        onChangeText={field.onChange}
+                        error={errors.opensAt?.message}
+                      />
+                    )}
+                  />
+                </View>
+                <View className="flex-1">
+                  <Controller
+                    control={control}
+                    name="closesAt"
+                    render={({ field }) => (
+                      <Input
+                        label="Closes At (HH:mm:ss)"
+                        placeholder="17:00:00"
+                        value={field.value}
+                        onChangeText={field.onChange}
+                        error={errors.closesAt?.message}
+                      />
+                    )}
+                  />
+                </View>
+              </View>
+
+              <View className="flex-row gap-2.5 mt-2">
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setIsModalVisible(false)}
+                  disabled={isSubmitting}
+                  className="flex-1 bg-slate-200 py-3 rounded-xl items-center"
+                >
+                  <Text className="text-slate-700 font-semibold text-base">Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={handleSubmit(onCreateSubmit)}
+                  disabled={isSubmitting}
+                  className={`flex-1 bg-blue-600 py-3 rounded-xl items-center ${isSubmitting ? 'opacity-50' : ''
+                    }`}
+                >
+                  <Text className="text-white font-semibold text-base">
+                    {isSubmitting ? 'Creating...' : 'Create'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };

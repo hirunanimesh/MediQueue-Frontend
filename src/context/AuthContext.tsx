@@ -23,12 +23,13 @@ interface JwtPayload {
 }
 
 const decodeBase64Url = (value: string) => {
+  //Convert Base64URL in to the standared base64
   const normalizedValue = value.replace(/-/g, '+').replace(/_/g, '/');
   const paddedValue = normalizedValue.padEnd(
     normalizedValue.length + ((4 - (normalizedValue.length % 4)) % 4),
     '=',
   );
-
+  //decode using browser
   if (typeof globalThis.atob === 'function') {
     return globalThis.atob(paddedValue);
   }

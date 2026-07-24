@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -24,7 +24,8 @@ type ReceptionistRegistrationForm = {
 };
 
 const RegisterReceptionistScreen = () => {
-  const { role } = useAuth();
+  const router = useRouter();
+  const { role, isHydrating } = useAuth();
 
   const {
     control,
@@ -43,10 +44,10 @@ const RegisterReceptionistScreen = () => {
   });
 
   useEffect(() => {
-    if (role !== Role.DOCTOR) {
+    if (!isHydrating && role !== Role.DOCTOR) {
       router.replace(roleDashboardRoute(role));
     }
-  }, [role]);
+  }, [isHydrating, role, router]);
 
   const onSubmit = async (values: ReceptionistRegistrationForm) => {
     await registerReceptionist({
@@ -66,7 +67,7 @@ const RegisterReceptionistScreen = () => {
     ]);
   };
 
-  if (role !== Role.DOCTOR) {
+  if (isHydrating || role !== Role.DOCTOR) {
     return null;
   }
 

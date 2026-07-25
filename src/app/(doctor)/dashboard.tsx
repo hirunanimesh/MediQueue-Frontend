@@ -18,8 +18,10 @@ import {
   createMedicalCenter,
   getAssignedMedicalCenters,
   getOwnedMedicalCenters,
+  updateMedicalCenter,
 } from '@/api/medicalCenter';
 import { Input } from '@/components/common/Input';
+import { OwnedMedicalCenterCard } from '@/components/doctor/OwnedMedicalCenterCard';
 import { Role } from '@/constants/roles';
 import { useAuth } from '@/hooks/useAuth';
 import { roleDashboardRoute } from '@/navigation/RoleRouter';
@@ -54,6 +56,10 @@ const DoctorDashboard = () => {
   const { role, isHydrating, logout } = useAuth();
 
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [editingCenter, setEditingCenter] = useState<DoctorOwnedMedicalCentersResponse | null>(
+    null,
+  );
   const [activeTab, setActiveTab] = useState<'owned' | 'assigned'>('owned');
   const [ownedCenters, setOwnedCenters] = useState<DoctorOwnedMedicalCentersResponse[]>([]);
   const [assignedCenters, setAssignedCenters] = useState<DoctorOwnedMedicalCentersResponse[]>([]);
@@ -65,6 +71,23 @@ const DoctorDashboard = () => {
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
+  } = useForm<MedicalCenterFormData>({
+    resolver: zodResolver(medicalCenterSchema),
+    defaultValues: {
+      name: '',
+      address: '',
+      latitude: '',
+      longitude: '',
+      opensAt: '08:00:00',
+      closesAt: '17:00:00',
+    },
+  });
+
+  const {
+    control: editControl,
+    handleSubmit: handleEditSubmit,
+    reset: resetEditForm,
+    formState: { errors: editErrors, isSubmitting: isEditSubmitting },
   } = useForm<MedicalCenterFormData>({
     resolver: zodResolver(medicalCenterSchema),
     defaultValues: {
@@ -171,6 +194,50 @@ const DoctorDashboard = () => {
         error?.response?.data?.message ||
         error?.message ||
         'An error occurred while creating the medical center.';
+      Alert.alert('Error', errorMsg);
+    }
+  };
+
+  const handleEditPress = (center: DoctorOwnedMedicalCentersResponse) => {
+    setEditingCenter(center);
+    resetEditForm({
+      name: center.name || '',
+      address: center.address || '',
+      latitude: center.latitude != null ? String(center.latitude) : '',
+      longitude: center.longitude != null ? String(center.longitude) : '',
+      opensAt: center.opensAt || '08:00:00',
+      closesAt: center.closesAt || '17:00:00',
+    });
+    setIsEditModalVisible(true);
+  };
+
+  const onUpdateSubmit = async (values: MedicalCenterFormData) => {
+    if (!editingCenter?.id) return;
+    try {
+      const payload = {
+        name: values.name.trim(),
+        address: values.address.trim(),
+        latitude: parseFloat(values.latitude),
+        longitude: parseFloat(values.longitude),
+        opensAt: formatTimeToHHMMSS(values.opensAt),
+        closesAt: formatTimeToHHMMSS(values.closesAt),
+      };
+
+      const response = await updateMedicalCenter(editingCenter.id, payload);
+
+      if (response.code === 200 || response.data) {
+        Alert.alert('Success', 'Medical Center updated successfully!');
+        setIsEditModalVisible(false);
+        setEditingCenter(null);
+        fetchMedicalCenters();
+      } else {
+        Alert.alert('Error', response.message || 'Failed to update medical center');
+      }
+    } catch (error: any) {
+      const errorMsg =
+        error?.response?.data?.message ||
+        error?.message ||
+        'An error occurred while updating the medical center.';
       Alert.alert('Error', errorMsg);
     }
   };
@@ -318,12 +385,18 @@ const DoctorDashboard = () => {
                   No owned medical centers found.
                 </Text>
                 <Text className="text-xs text-slate-400 mt-1 text-center">
-                  Tap "+ Create Medical Center" above to add your first clinic or hospital.
+                  {'Tap "+ Create Medical Center" above to add your first clinic or hospital.'}
                 </Text>
               </View>
             ) : (
               <View key="owned-list" className="gap-3">
-                {ownedCenters.map((center, index) => renderCenterCard(center, index, 'owned'))}
+                {ownedCenters.map((center, index) => (
+                  <OwnedMedicalCenterCard
+                    key={`owned-${center.id ?? index}`}
+                    center={center}
+                    onEdit={handleEditPress}
+                  />
+                ))}
               </View>
             )}
           </View>
@@ -485,6 +558,162 @@ const DoctorDashboard = () => {
                 >
                   <Text className="text-white font-semibold text-base">
                     {isSubmitting ? 'Creating...' : 'Create'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal for Edit Medical Center */}
+      <Modal
+        visible={isEditModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => {
+          setIsEditModalVisible(false);
+          setEditingCenter(null);
+        }}
+      >
+        <View className="flex-1 bg-black/50 justify-center p-4">
+          <View className="bg-white rounded-2xl p-5 max-h-[90%] shadow-xl">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-xl font-bold text-slate-900">
+                Edit Medical Center{editingCenter?.id != null ? ` (ID: ${editingCenter.id})` : ''}
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  setIsEditModalVisible(false);
+                  setEditingCenter(null);
+                }}
+                className="p-1 rounded-lg"
+              >
+                <Text className="text-lg font-bold text-slate-400">✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={{ gap: 12 }}>
+              <Controller
+                control={editControl}
+                name="name"
+                render={({ field }) => (
+                  <Input
+                    label="Medical Center Name"
+                    placeholder="e.g. City Care Hospital"
+                    value={field.value}
+                    onChangeText={field.onChange}
+                    error={editErrors.name?.message}
+                  />
+                )}
+              />
+
+              <Controller
+                control={editControl}
+                name="address"
+                render={({ field }) => (
+                  <Input
+                    label="Address"
+                    placeholder="e.g. 123 Main St, Colombo"
+                    value={field.value}
+                    onChangeText={field.onChange}
+                    error={editErrors.address?.message}
+                  />
+                )}
+              />
+
+              <View className="flex-row gap-2.5">
+                <View className="flex-1">
+                  <Controller
+                    control={editControl}
+                    name="latitude"
+                    render={({ field }) => (
+                      <Input
+                        label="Latitude"
+                        placeholder="e.g. 6.9271"
+                        keyboardType="numeric"
+                        value={field.value}
+                        onChangeText={field.onChange}
+                        error={editErrors.latitude?.message}
+                      />
+                    )}
+                  />
+                </View>
+                <View className="flex-1">
+                  <Controller
+                    control={editControl}
+                    name="longitude"
+                    render={({ field }) => (
+                      <Input
+                        label="Longitude"
+                        placeholder="e.g. 79.8612"
+                        keyboardType="numeric"
+                        value={field.value}
+                        onChangeText={field.onChange}
+                        error={editErrors.longitude?.message}
+                      />
+                    )}
+                  />
+                </View>
+              </View>
+
+              <View className="flex-row gap-2.5">
+                <View className="flex-1">
+                  <Controller
+                    control={editControl}
+                    name="opensAt"
+                    render={({ field }) => (
+                      <Input
+                        label="Opens At (HH:mm:ss)"
+                        placeholder="08:00:00"
+                        value={field.value}
+                        onChangeText={field.onChange}
+                        error={editErrors.opensAt?.message}
+                      />
+                    )}
+                  />
+                </View>
+                <View className="flex-1">
+                  <Controller
+                    control={editControl}
+                    name="closesAt"
+                    render={({ field }) => (
+                      <Input
+                        label="Closes At (HH:mm:ss)"
+                        placeholder="17:00:00"
+                        value={field.value}
+                        onChangeText={field.onChange}
+                        error={editErrors.closesAt?.message}
+                      />
+                    )}
+                  />
+                </View>
+              </View>
+
+              <View className="flex-row gap-2.5 mt-2">
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    setIsEditModalVisible(false);
+                    setEditingCenter(null);
+                  }}
+                  disabled={isEditSubmitting}
+                  className="flex-1 bg-slate-200 py-3 rounded-xl items-center"
+                >
+                  <Text className="text-slate-700 font-semibold text-base">Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={handleEditSubmit(onUpdateSubmit)}
+                  disabled={isEditSubmitting}
+                  className={`flex-1 bg-blue-600 py-3 rounded-xl items-center ${
+                    isEditSubmitting ? 'opacity-50' : ''
+                  }`}
+                >
+                  <Text className="text-white font-semibold text-base">
+                    {isEditSubmitting ? 'Updating...' : 'Update'}
                   </Text>
                 </TouchableOpacity>
               </View>

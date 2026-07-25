@@ -30,3 +30,15 @@ export const getAssignedMedicalCenters = async (): Promise<
   const { data } = await axiosInstance.get(API_ENDPOINTS.MEDICAL_CENTER.ASSIGNED);
   return data;
 };
+
+export const updateMedicalCenter = async (
+  id: number | string,
+  payload: MedicalCenterDTO,
+): Promise<StandardResponse<MedicalCenterResponse>> => {
+  const { data } = await axiosInstance.patch<StandardResponse<MedicalCenterResponse>>(
+    API_ENDPOINTS.MEDICAL_CENTER.UPDATE(id),
+    payload,
+  );
+  return data;
+};
+

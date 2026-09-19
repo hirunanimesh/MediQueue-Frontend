@@ -3,6 +3,7 @@
     "name": "MediQueue",
     "slug": "mediqueue-frontend",
     "scheme": "mediqueue",
+    "userInterfaceStyle": "automatic",
     "web": {
       "bundler": "metro"
     },
@@ -19,7 +20,8 @@
         {
           "root": "./src/app"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

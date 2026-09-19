@@ -1,6 +1,6 @@
 
 
-export const API_BASE_URL = 'http://10.185.201.42:8083';
+export const API_BASE_URL = 'http://10.205.151.41:8083';
 
 export const API_ENDPOINTS = {
   AUTH: {

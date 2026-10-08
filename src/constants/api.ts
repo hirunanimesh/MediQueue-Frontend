@@ -15,5 +15,8 @@ export const API_ENDPOINTS = {
     OWNED: '/api/v1/medical-center/owned-medical-centers',
     ASSIGNED: '/api/v1/medical-center/assigned-medical-centers',
   },
+  SESSION_TEMPLATE: {
+    CREATE: '/api/v1/session-template/create',
+  },
 } as const;
 

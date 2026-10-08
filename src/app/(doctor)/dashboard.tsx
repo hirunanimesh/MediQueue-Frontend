@@ -21,6 +21,7 @@ import {
   updateMedicalCenter,
 } from '@/api/medicalCenter';
 import { Input } from '@/components/common/Input';
+import { CreateSessionModal } from '@/components/doctor/CreateSessionModal';
 import { OwnedMedicalCenterCard } from '@/components/doctor/OwnedMedicalCenterCard';
 import { Role } from '@/constants/roles';
 import { useAuth } from '@/hooks/useAuth';
@@ -65,6 +66,7 @@ const DoctorDashboard = () => {
   const [assignedCenters, setAssignedCenters] = useState<DoctorOwnedMedicalCentersResponse[]>([]);
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSessionModalVisible, setIsSessionModalVisible] = useState(false);
 
   const {
     control,
@@ -325,6 +327,13 @@ const DoctorDashboard = () => {
             className="bg-blue-600 py-3.5 px-4 rounded-xl items-center shadow-sm"
           >
             <Text className="text-white font-semibold text-base">+ Create Medical Center</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => setIsSessionModalVisible(true)}
+            className="bg-emerald-600 py-3.5 px-4 rounded-xl items-center shadow-sm"
+          >
+            <Text className="text-white font-semibold text-base">+ Create a Session</Text>
           </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.7}
@@ -721,6 +730,14 @@ const DoctorDashboard = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Modal for Create Session Template */}
+      <CreateSessionModal
+        visible={isSessionModalVisible}
+        onClose={() => setIsSessionModalVisible(false)}
+        medicalCenters={[...ownedCenters, ...assignedCenters]}
+        onSessionCreated={fetchMedicalCenters}
+      />
     </View>
   );
 };
